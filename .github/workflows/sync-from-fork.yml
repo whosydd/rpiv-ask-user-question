@@ -2,12 +2,12 @@ name: Sync from rpiv-mono
 
 on:
   schedule:
-    # Daily at 01:00 UTC, one hour after the fork's own upstream sync
+    # Daily at 03:00 UTC, well after the fork's own upstream sync
     # (whosydd/rpiv-mono/.github/workflows/sync-upstream.yml runs at 00:00 UTC
     # and merges juicesharp/rpiv-mono upstream). The fork merge typically lands
     # by ~00:37-01:55 UTC, so this repo's content =
     # upstream latest + the user's own modifications.
-    - cron: "0 1 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
