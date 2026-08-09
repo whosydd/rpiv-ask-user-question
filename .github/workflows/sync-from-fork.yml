@@ -1,0 +1,73 @@
+name: Sync from rpiv-mono
+
+on:
+  schedule:
+    # Daily at 00:00 UTC, same slot as the fork's own upstream sync
+    # (whosydd/rpiv-mono/.github/workflows/sync-upstream.yml). The fork merges
+    # juicesharp/rpiv-mono upstream daily, so this repo's content =
+    # upstream latest + the user's own modifications.
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out standalone repo
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Fetch package from fork
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add fork https://github.com/whosydd/rpiv-mono.git
+          git fetch fork main --depth=1
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg
+          git archive fork/main packages/rpiv-ask-user-question | tar -x -C /tmp/pkg
+
+      - name: Mirror package into repo root
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 ! -name . ! -name .git ! -name .github -exec rm -rf {} +
+          cp -a /tmp/pkg/packages/rpiv-ask-user-question/. .
+
+      - name: Patch package.json metadata
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          p = "package.json"
+          d = json.load(open(p))
+          d["repository"] = {"type": "git", "url": "git+https://github.com/whosydd/rpiv-ask-user-question.git"}
+          d["homepage"] = "https://github.com/whosydd/rpiv-ask-user-question#readme"
+          d["bugs"] = {"url": "https://github.com/whosydd/rpiv-ask-user-question/issues"}
+          json.dump(d, open(p, "w"), indent="\t", ensure_ascii=False)
+          open(p, "a").write("\n")
+          PYEOF
+
+      - name: Write .gitignore
+        run: |
+          printf 'node_modules/\ncoverage/\ndist/\n*.tsbuildinfo\n.DS_Store\n' > .gitignore
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -q -m "chore: sync from whosydd/rpiv-mono
+
+Mirrored packages/rpiv-ask-user-question from fork main (daily merges
+juicesharp/rpiv-mono upstream)."
+          git push origin HEAD:main
