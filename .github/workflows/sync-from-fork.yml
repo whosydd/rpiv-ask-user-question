@@ -68,6 +68,6 @@ jobs:
           fi
           git commit -q -m "chore: sync from whosydd/rpiv-mono
 
-Mirrored packages/rpiv-ask-user-question from fork main (daily merges
-juicesharp/rpiv-mono upstream)."
+          Mirrored packages/rpiv-ask-user-question from fork main (daily merges
+          juicesharp/rpiv-mono upstream)."
           git push origin HEAD:main
